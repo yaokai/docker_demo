@@ -1,28 +1,27 @@
-#新生成的镜像是基于sshd:dockerfile镜像
-FROM sshd-centos
-MAINTAINER by cmzsteven
-WORKDIR /usr/local/src
-#安装wget
-RUN yum install -y  wget
-#下载并解压源码包
-RUN wget http://nginx.org/download/nginx-1.8.0.tar.gz
-RUN tar -zxvf nginx-1.8.0.tar.gz
-WORKDIR nginx-1.8.0
-#编译安装nginx
-RUN yum install -y gcc make pcre-devel zlib-devel
-RUN ./configure   --prefix=/usr/local/nginx   --with-pcre
-RUN make
-RUN make install
-#启动Nginx服务
-RUN /usr/local/nginx/sbin/nginx
-#修改Nginx配置文件,以非daemon方式启动
-RUN echo "daemon off;">>/usr/local/nginx/conf/nginx.conf
-#复制服务启动脚本并设置权限
-ADD run.sh /usr/local/sbin/run.sh
-RUN chmod 755 /usr/local/sbin/run.sh
-#设置生成容器时需要执行的脚本
-CMD ["/usr/local/sbin/run.sh"]
-#开放22、80、443端口
-EXPOSE 22
-EXPOSE 80
-EXPOSE 443
+FROM debian:jessie
+
+MAINTAINER NGINX Docker Maintainers "docker-maint@nginx.com"
+
+ENV NGINX_VERSION 1.10.1-1~jessie
+
+RUN apt-key adv --keyserver hkp://pgp.mit.edu:80 --recv-keys 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62 \
+        && echo "deb http://nginx.org/packages/debian/ jessie nginx" >> /etc/apt/sources.list \
+        && apt-get update \
+        && apt-get install --no-install-recommends --no-install-suggests -y \
+                                                ca-certificates \
+                                                nginx=${NGINX_VERSION} \
+                                                nginx-module-xslt \
+                                                nginx-module-geoip \
+                                                nginx-module-image-filter \
+                                                nginx-module-perl \
+                                                nginx-module-njs \
+                                                gettext-base \
+        && rm -rf /var/lib/apt/lists/*
+
+# forward request and error logs to docker log collector
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+        && ln -sf /dev/stderr /var/log/nginx/error.log
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]
